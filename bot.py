@@ -7,7 +7,7 @@ ADMIN_ID = 1139713731  # O'ZGARTIRING
 # /start komandasi
 def start(update, context):
     keyboard = [
-        [KeyboardButton("📨 Talab va takliflar"), KeyboardButton("📊 So‘rovnomada qatnashish")]
+        [KeyboardButton("📨 Talab va takliflar, E'tirozlar"), KeyboardButton("📊 So‘rovnomada qatnashish")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     update.message.reply_text("Quyidagi menyudan birini tanlang:", reply_markup=reply_markup)
@@ -18,7 +18,7 @@ def handle_message(update, context):
     chat_id = update.message.chat_id
 
     if text == "📨 Talab va takliflar":
-        context.bot.send_message(chat_id=chat_id, text="Iltimos, talab yoki taklifingizni yozing:")
+        context.bot.send_message(chat_id=chat_id, text="Iltimos, talab va takliflar yoki e'tirozingizni yozing. Har bir fikr biz uchun muhim!")
 
     elif text == "📊 So‘rovnomada qatnashish":
         context.bot.send_poll(
@@ -30,11 +30,11 @@ def handle_message(update, context):
 
     else:
         context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi talab/taklif:\n\n{text}")
-        context.bot.send_message(chat_id=chat_id, text="Xabaringiz uchun rahmat!")
+        context.bot.send_message(chat_id=chat_id, text="Fikringiz uchun rahmat!")
 
 # Main
 def main():
-    updater = Updater("BOT_TOKEN", use_context=True)  # BOT_TOKEN ni almashtiring
+    updater = Updater("8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU", use_context=True)  # BOT_TOKEN ni almashtiring
 
     dp = updater.dispatcher
 
