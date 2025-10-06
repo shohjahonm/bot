@@ -1,162 +1,99 @@
 # 1139713731  
 # 8328899370:AAFatemiB1503HFYFzauBWLsgtQCu2X1MB4
-import csv
 import os
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    PollAnswerHandler,
-    ContextTypes
-)
+import csv
+from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollAnswerHandler, CallbackContext
 
-# 🔐 Sozlamalar
-TOKEN = "8328899370:AAFatemiB1503HFYFzauBWLsgtQCu2X1MB4"  # <-- O'zingizning token
-ADMIN_ID = 1139713731  # <-- O'zingizning admin ID
+# Environment variables
+TOKEN = os.getenv("TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# CSV fayl
-CSV_FILE = "results.csv"
+# Poll tracking
+active_polls = {}  # chat_id: list of poll_ids
 
-# Foydalanuvchidan holatni saqlash
-user_state = {}
-
-# -------------------------
-# CSV ga saqlash funksiyasi
-# -------------------------
-def save_result_csv(user_id, username, question, answers):
-    file_exists = os.path.isfile(CSV_FILE)
-    
-    with open(CSV_FILE, mode="a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["user_id", "username", "question", "answers"])
-        writer.writerow([user_id, username, question, ", ".join(answers)])
-
-# -------------------------
 # /start komandasi
-# -------------------------
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update, context: CallbackContext):
     keyboard = [
-        [KeyboardButton("📨 Taklif va shikoyatlar")],
-        [KeyboardButton("📊 So‘rovnomada qatnashish")]
+        [KeyboardButton("📨 Talab va takliflar"), KeyboardButton("📊 So‘rovnomada qatnashish")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-    await update.message.reply_text(
-        f"☕️ Assalomu alaykum, {update.effective_user.first_name}!\n\n"
-        "Aristocrat Cafe botiga xush kelibsiz! 😊\n"
-        "Quyidagi menyudan kerakli bo‘limni tanlang:",
+    update.message.reply_text(
+        "Assalomu alaykum! 👋\nAristocrat Cafe botiga xush kelibsiz!\nQuyidagi menyudan birini tanlang:",
         reply_markup=reply_markup
     )
 
-# -------------------------
-# Foydalanuvchi xabarlarini boshqarish
-# -------------------------
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Xabarlarni ishlovchi funksiya
+def handle_message(update, context: CallbackContext):
     text = update.message.text
     chat_id = update.message.chat_id
 
-    if text == "📨 Taklif va shikoyatlar":
-        user_state[chat_id] = "feedback"
-        await context.bot.send_message(chat_id, "Iltimos, o‘z taklif yoki shikoyatingizni yozib qoldiring ☕️:")
+    if text == "📨 Talab va takliflar":
+        context.bot.send_message(chat_id=chat_id, text="Iltimos, talab yoki taklifingizni yozing:")
 
     elif text == "📊 So‘rovnomada qatnashish":
-        await send_polls(update, context)
-
-    elif chat_id in user_state and user_state[chat_id] == "feedback":
-        # Adminga yuborish
-        await context.bot.send_message(ADMIN_ID, f"📩 Yangi fikr:\n\n{text}")
-        await context.bot.send_message(chat_id, "Rahmat! Sizning fikringiz biz uchun muhim 💬")
-
-        # Asosiy menyuga qaytish
-        del user_state[chat_id]
-        await start(update, context)
+        questions = [
+            "Bot sizga yoqmoqdami?",
+            "Xizmat darajasi sizni qoniqtirdimi?",
+            "Taomlar sifati qanday?"
+        ]
+        options = ["Ha", "Yo‘q", "Hali bilmayman", "Boshqa"]
+        poll_ids = []
+        for q in questions:
+            poll_message = context.bot.send_poll(
+                chat_id=chat_id,
+                question=q,
+                options=options,
+                is_anonymous=False,
+                allows_multiple_answers=True
+            )
+            poll_ids.append(poll_message.poll.id)
+        active_polls[chat_id] = poll_ids
 
     else:
-        await start(update, context)
+        # Talab/taklif yuborilganida
+        context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi talab/taklif:\n\n{text}")
+        context.bot.send_message(chat_id=chat_id, text="Xabaringiz uchun rahmat!")
+        start(update, context)
 
-# -------------------------
-# So‘rovnomalarni yuborish
-# -------------------------
-async def send_polls(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+# Poll javoblarini CSV va adminga yuborish
+def handle_poll_answer(update, context: CallbackContext):
+    poll_answer = update.poll_answer
+    chat_id = update.effective_chat.id
+    user_id = poll_answer.user.id
+    poll_id = poll_answer.poll_id
+    answers = poll_answer.option_ids
 
-    polls = [
-        {
-            "question": "Bizning xizmat sifati sizni qoniqtirdimi?",
-            "options": ["Ha, juda yaxshi", "O‘rtacha", "Yo‘q, yaxshilash kerak"]
-        },
-        {
-            "question": "Kafelarimizdagi muhit sizga yoqdimi?",
-            "options": ["Ha, ajoyib!", "Yaxshi", "Yoqmadi"]
-        },
-        {
-            "question": "Narxlar darajasi haqida fikringiz?",
-            "options": ["Arzon", "Mos", "Qimmat"]
-        },
-        {
-            "question": "Siz bizni boshqalarga tavsiya qilarmidingiz?",
-            "options": ["Ha, albatta", "Ehtimol", "Yo‘q"]
-        },
-    ]
+    # CSV saqlash
+    with open("results.csv", "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([user_id, poll_id, answers])
 
-    for poll in polls:
-        msg = await context.bot.send_poll(
-            chat_id=chat_id,
-            question=poll["question"],
-            options=poll["options"],
-            is_anonymous=False,
-            allows_multiple_answers=True
-        )
-        # Poll ma'lumotlarini saqlaymiz
-        context.bot_data[msg.poll.id] = {"question": poll["question"], "options": poll["options"]}
+    # Adminga real vaqt yuborish
+    context.bot.send_message(chat_id=ADMIN_ID, text=f"Foydalanuvchi {user_id} so'rovnomaga javob berdi: {answers}")
 
-    await context.bot.send_message(chat_id, "☕️ So‘rovnoma tugadi! Javoblaringiz uchun katta rahmat 💛")
-    await start(update, context)
+    # Foydalanuvchiga xabar, agar barcha poll javoblari berilgan bo‘lsa
+    if chat_id in active_polls:
+        if poll_id in active_polls[chat_id]:
+            active_polls[chat_id].remove(poll_id)
+        if not active_polls[chat_id]:
+            # Hammasi to‘ldirilgan
+            context.bot.send_message(chat_id=user_id, text="Surovnomada ishtirok etganingiz uchun rahmat! ✅")
+            start(update, context)  # Bosh menyuga qaytarish
+            del active_polls[chat_id]  # Tozalash
 
-# -------------------------
-# Poll javoblarini qayta ishlash
-# -------------------------
-async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    answer = update.poll_answer
-    user_id = answer.user.id
-    username = answer.user.first_name
-    poll_id = answer.poll_id
-    selected = answer.option_ids
-
-    poll_data = context.bot_data.get(poll_id)
-    if poll_data:
-        question = poll_data["question"]
-        options = poll_data["options"]
-        selected_text = [options[i] for i in selected]
-
-        # Adminga yuborish
-        await context.bot.send_message(
-            ADMIN_ID,
-            f"🗳 So‘rovnoma javobi:\n\n"
-            f"👤 Foydalanuvchi: {username}\n"
-            f"❓ Savol: {question}\n"
-            f"✅ Javob: {', '.join(selected_text)}"
-        )
-
-        # CSV ga saqlash
-        save_result_csv(user_id, username, question, selected_text)
-
-# -------------------------
-# Asosiy funksiya
-# -------------------------
+# Main
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    app.add_handler(PollAnswerHandler(handle_poll_answer))
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.text, handle_message))
+    dp.add_handler(PollAnswerHandler(handle_poll_answer))
 
-    print("🤖 Aristocrat Cafe bot ishga tushdi...")
-    app.run_polling()
+    updater.start_polling()
+    print("Bot ishga tushdi...")
+    updater.idle()
 
-# -------------------------
 if __name__ == "__main__":
     main()
