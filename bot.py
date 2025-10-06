@@ -1,65 +1,57 @@
+from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+# Admin ID — o'zingizni telegram ID'ingizni yozing
+ADMIN_ID = 1139713731  # O'ZGARTIRING
 
-# Admin ID ni kiritish
-ADMIN_ID = 1139713731  # admin ID
-
-# Stage identifiers for conversation
-TALAB_TAKLIF, FEEDBACK = range(2)
-
-# Start command handler
-def start(update: Update, context):
+# /start komandasi
+def start(update, context):
     keyboard = [
-        [KeyboardButton('Talab va Takliflar')],
-        [KeyboardButton('Surovnomada Ishtirok Etish')],
+        [KeyboardButton("📨 Talab va takliflar"), KeyboardButton("📊 So‘rovnomada qatnashish")]
     ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
-    update.message.reply_text("Salom! Talab va Takliflar yoki Surovnomada Ishtirok Etish uchun birini tanlang.", reply_markup=reply_markup)
-    return TALAB_TAKLIF
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    update.message.reply_text("Quyidagi menyudan birini tanlang:", reply_markup=reply_markup)
 
-# Handle the "Talab va Takliflar" button press
-def talab_taklif(update: Update, context):
-    update.message.reply_text("Iltimos, talab yoki taklifingizni yozing:")
-    return FEEDBACK
+# Xabarlarni ishlovchi funksiya
+def handle_message(update, context):
+    text = update.message.text
+    chat_id = update.message.chat_id
 
-# Handle the "Surovnomada Ishtirok Etish" button press
-def surovnomada_ishtirok(update: Update, context):
-    update.message.reply_text("Siz surovnomada ishtirok etasiz. Iltimos, javobni yozing.")
-    return FEEDBACK
+    if text == "📨 Talab va takliflar":
+        context.bot.send_message(chat_id=chat_id, text="Iltimos, talab yoki taklifingizni yozing:")
 
-# Capture the user's feedback and send a thank you message
-def feedback(update: Update, context):
-    user_feedback = update.message.text
-    # Here you can process the feedback, save it, etc.
-    update.message.reply_text(f"Fikrlaringiz uchun rahmat! Sizning fikringiz: {user_feedback}")
-    
-    # Admin uchun feedback yuborish
-    context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi fikr: {user_feedback}")
-    
-    return ConversationHandler.END
+    elif text == "📊 So‘rovnomada qatnashish":
+        context.bot.send_poll(
+            chat_id=chat_id,
+            question="Bot sizga yoqmoqdami?",
+            options=["Ha", "Yoq", "Hali bilmayman"],
+            is_anonymous=False
+        )
 
-# Define the main function to set up the conversation handler
+    else:
+        # Talab yoki taklif yuborilganida adminga yuborish va foydalanuvchiga "Raxmat" xabarini yuborish
+        context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi talab/taklif:\n\n{text}")
+        context.bot.send_message(chat_id=chat_id, text="Xabaringiz uchun rahmat!")
+
+# So'rovnoma tugaganidan keyin raxmat aytish
+def handle_poll_answer(update, context):
+    poll_answer = update.poll_answer
+    chat_id = update.effective_chat.id
+
+    # So'rovnomada javob yuborilganda
+    context.bot.send_message(chat_id=chat_id, text="Surovnomada ishtirok etganingiz uchun rahmat!")
+
+# Main
 def main():
-    # Replace 'YOUR_BOT_TOKEN' with your bot's token
-    updater = Updater("8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU", use_context=True)
+    updater = Updater("8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU", use_context=True)  # BOT_TOKEN ni almashtiring
     dp = updater.dispatcher
 
-    conversation_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            TALAB_TAKLIF: [
-                MessageHandler(Filters.regex('^Talab va Takliflar$'), talab_taklif),
-                MessageHandler(Filters.regex('^Surovnomada Ishtirok Etish$'), surovnomada_ishtirok),
-            ],
-            FEEDBACK: [MessageHandler(Filters.text & ~Filters.command, feedback)],
-        },
-        fallbacks=[],
-    )
-
-    dp.add_handler(conversation_handler)
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.text, handle_message))
+    dp.add_handler(MessageHandler(Filters.poll_answer, handle_poll_answer))  # So'rovnoma tugagandan keyin raxmat yuborish
 
     updater.start_polling()
+    print("Bot ishlayapti...")
     updater.idle()
 
 if __name__ == '__main__':
