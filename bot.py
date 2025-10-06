@@ -37,13 +37,22 @@ def handle_message(update, context):
         context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi talab/taklif:\n\n{text}")
         context.bot.send_message(chat_id=chat_id, text="Xabaringiz uchun rahmat!")
 
-# So'rovnoma tugaganidan keyin raxmat aytish
-def handle_poll_answer(update, context):
+# So'rovnoma tugagandan keyin raxmat aytish
+def handle_poll_answer(update, context: CallbackContext):
     poll_answer = update.poll_answer
     chat_id = update.effective_chat.id
 
     # So'rovnomada javob yuborilganda
-    context.bot.send_message(chat_id=chat_id, text="So'rovnomada ishtirok etganingiz uchun rahmat!")
+    context.bot.send_message(chat_id=chat_id, text="Surovnomada ishtirok etganingiz uchun rahmat!")
+
+    # Adminga javoblar haqida ma'lumot yuborish
+    answer_text = "\n".join(poll_answer.option_ids)
+    context.bot.send_message(chat_id=ADMIN_ID, text=f"Foydalanuvchi so'rovnomaga javob berdi:\n{answer_text}")
+
+# So'rovnomani tugatish
+def handle_poll_end(update, context):
+    chat_id = update.effective_chat.id
+    context.bot.send_message(chat_id=chat_id, text="Surovnoma yakunlandi. Ishtirok etganingiz uchun rahmat!")
 
 # Main
 def main():
