@@ -28,7 +28,8 @@ def handle_message(update, context):
             chat_id=chat_id,
             question="Bot sizga yoqmoqdami?",
             options=["Ha", "Yoq", "Hali bilmayman"],
-            is_anonymous=False
+            is_anonymous=False,
+            allows_multiple_answers=True
         )
 
     else:
@@ -42,7 +43,7 @@ def handle_poll_answer(update, context):
     chat_id = update.effective_chat.id
 
     # So'rovnomada javob yuborilganda
-    context.bot.send_message(chat_id=chat_id, text="Surovnomada ishtirok etganingiz uchun rahmat!")
+    context.bot.send_message(chat_id=chat_id, text="So'rovnomada ishtirok etganingiz uchun rahmat!")
 
 # Main
 def main():
