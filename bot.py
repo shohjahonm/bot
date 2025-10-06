@@ -1,5 +1,8 @@
+# 1139713731  
+# 8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU
+
 from telegram import ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollAnswerHandler
 
 # Admin ID — o'zingizni telegram ID'ingizni yozing
 ADMIN_ID = 1139713731  # O'ZGARTIRING
@@ -48,7 +51,7 @@ def main():
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(MessageHandler(Filters.text, handle_message))
-    dp.add_handler(MessageHandler(Filters.poll_answer, handle_poll_answer))  # So'rovnoma tugagandan keyin raxmat yuborish
+    dp.add_handler(PollAnswerHandler(handle_poll_answer))  # So'rovnoma tugagandan keyin raxmat yuborish
 
     updater.start_polling()
     print("Bot ishlayapti...")
