@@ -1,8 +1,7 @@
 # 1139713731  
 # 8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU
-
 from telegram import ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollAnswerHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollAnswerHandler, CallbackContext
 
 # Admin ID — o'zingizni telegram ID'ingizni yozing
 ADMIN_ID = 1139713731  # O'ZGARTIRING
@@ -26,10 +25,10 @@ def handle_message(update, context):
     elif text == "📊 So‘rovnomada qatnashish":
         context.bot.send_poll(
             chat_id=chat_id,
-            question="Bot sizga yoqmoqdami?",
-            options=["Ha", "Yoq", "Hali bilmayman"],
+            question="Bot sizga yoqmoqdami? Bir nechta variantni tanlang!",
+            options=["Ha", "Yoq", "Hali bilmayman", "Boshqa"],
             is_anonymous=False,
-            allows_multiple_answers=True
+            allows_multiple_answers=True  # Bir nechta variantni tanlashni faollashtiramiz
         )
 
     else:
@@ -46,7 +45,7 @@ def handle_poll_answer(update, context: CallbackContext):
     context.bot.send_message(chat_id=chat_id, text="Surovnomada ishtirok etganingiz uchun rahmat!")
 
     # Adminga javoblar haqida ma'lumot yuborish
-    answer_text = "\n".join(poll_answer.option_ids)
+    answer_text = "\n".join(map(str, poll_answer.option_ids))  # Javoblarni to'g'ri formatlash
     context.bot.send_message(chat_id=ADMIN_ID, text=f"Foydalanuvchi so'rovnomaga javob berdi:\n{answer_text}")
 
 # So'rovnomani tugatish
@@ -61,11 +60,18 @@ def main():
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(MessageHandler(Filters.text, handle_message))
-    dp.add_handler(PollAnswerHandler(handle_poll_answer))  # So'rovnoma tugagandan keyin raxmat yuborish
+    dp.add_handler(PollAnswerHandler(handle_poll_answer))  # So'rovnoma javoblarini qayta ishlash
+
+    # Poll tugashini tekshirish
+    dp.add_handler(MessageHandler(Filters.poll, handle_poll_end))  # So'rovnomani tugatish
 
     updater.start_polling()
     print("Bot ishlayapti...")
     updater.idle()
+
+if __name__ == '__main__':
+    main()
+
 
 if __name__ == '__main__':
     main()
