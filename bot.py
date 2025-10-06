@@ -1,10 +1,9 @@
 # 1139713731  
 # 8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU
-from telegram import ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollAnswerHandler, CallbackContext
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters, CallbackContext
 
-# Admin ID — o'zingizni telegram ID'ingizni yozing
-ADMIN_ID = 1139713731  # O'ZGARTIRING
+ADMIN_ID = 1139713731  # Adminga o'zgartiring
 
 # /start komandasi
 def start(update, context):
@@ -23,54 +22,57 @@ def handle_message(update, context):
         context.bot.send_message(chat_id=chat_id, text="Iltimos, talab yoki taklifingizni yozing:")
 
     elif text == "📊 So‘rovnomada qatnashish":
-        context.bot.send_poll(
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Ha", callback_data="Ha"),
+                InlineKeyboardButton("❌ Yo‘q", callback_data="Yo‘q")
+            ],
+            [
+                InlineKeyboardButton("🤔 Hali bilmayman", callback_data="Hali bilmayman"),
+                InlineKeyboardButton("📝 Boshqa", callback_data="Boshqa")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(
             chat_id=chat_id,
-            question="Bot sizga yoqmoqdami? Bir nechta variantni tanlang!",
-            options=["Ha", "Yoq", "Hali bilmayman", "Boshqa"],
-            is_anonymous=False,
-            allows_multiple_answers=True  # Bir nechta variantni tanlashni faollashtiramiz
+            text="Bot sizga yoqmoqdami?",
+            reply_markup=reply_markup
         )
 
     else:
-        # Talab yoki taklif yuborilganida adminga yuborish va foydalanuvchiga "Raxmat" xabarini yuborish
         context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi talab/taklif:\n\n{text}")
         context.bot.send_message(chat_id=chat_id, text="Xabaringiz uchun rahmat!")
 
-# So'rovnoma tugagandan keyin raxmat aytish
-def handle_poll_answer(update, context: CallbackContext):
-    poll_answer = update.poll_answer
-    chat_id = update.effective_chat.id
+# Tugma bosilganda ishlovchi funksiya
+def button_click(update, context: CallbackContext):
+    query = update.callback_query
+    user = query.from_user
+    answer = query.data
 
-    # So'rovnomada javob yuborilganda
-    context.bot.send_message(chat_id=chat_id, text="Surovnomada ishtirok etganingiz uchun rahmat!")
+    # Foydalanuvchiga alert ko‘rsatish
+    query.answer(
+        text="Sizning javobingiz qabul qilindi! 😊",
+        show_alert=True
+    )
 
-    # Adminga javoblar haqida ma'lumot yuborish
-    answer_text = "\n".join(map(str, poll_answer.option_ids))  # Javoblarni to'g'ri formatlash
-    context.bot.send_message(chat_id=ADMIN_ID, text=f"Foydalanuvchi so'rovnomaga javob berdi:\n{answer_text}")
-
-# So'rovnomani tugatish
-def handle_poll_end(update, context):
-    chat_id = update.effective_chat.id
-    context.bot.send_message(chat_id=chat_id, text="Surovnoma yakunlandi. Ishtirok etganingiz uchun rahmat!")
+    # Adminga xabar yuborish
+    context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=f"Foydalanuvchi {user.first_name} ({user.id}) quyidagi javobni tanladi: {answer}"
+    )
 
 # Main
 def main():
-    updater = Updater("8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU", use_context=True)  # BOT_TOKEN ni almashtiring
+    updater = Updater("8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU", use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(MessageHandler(Filters.text, handle_message))
-    dp.add_handler(PollAnswerHandler(handle_poll_answer))  # So'rovnoma javoblarini qayta ishlash
-
-    # Poll tugashini tekshirish
-    dp.add_handler(MessageHandler(Filters.poll, handle_poll_end))  # So'rovnomani tugatish
+    dp.add_handler(CallbackQueryHandler(button_click))
 
     updater.start_polling()
-    print("Bot ishlayapti...")
+    print("✅ Bot alertli versiyada ishlayapti...")
     updater.idle()
-
-if __name__ == '__main__':
-    main()
 
 if __name__ == '__main__':
     main()
