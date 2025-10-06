@@ -1,142 +1,110 @@
 # 1139713731  
 # 8328899370:AAFatemiB1503HFYFzauBWLsgtQCu2X1MB4
 import os
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters, CallbackContext
+import json
+from telegram import Update, Poll
+from telegram.ext import ApplicationBuilder, CommandHandler, PollHandler, ContextTypes
 
-# TOKENni Heroku Config Vars dan olish
 TOKEN = os.getenv("8328899370:AAFatemiB1503HFYFzauBWLsgtQCu2X1MB4")
+ADMIN_ID = 1139713731  # bu yerga o'zingizning Telegram ID yozing
+DATA_FILE = "poll_results.json"
 
-ADMIN_ID = 1139713731  # o'zingizni ID
-user_votes = {}  # foydalanuvchi tanlovlari
-OPTIONS = ["Ha", "Yo‘q", "Hali bilmayman", "Boshqa"]
 
-# /start komandasi
-def start(update, context):
-    keyboard = [
-        [KeyboardButton("📨 Talab va takliflar"), KeyboardButton("📊 So‘rovnomada qatnashish")]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    update.message.reply_text("Quyidagi menyudan birini tanlang:", reply_markup=reply_markup)
-
-# Xabarlarni ishlovchi funksiya
-def handle_message(update, context):
-    text = update.message.text
-    chat_id = update.message.chat_id
-
-    if text == "📨 Talab va takliflar":
-        context.bot.send_message(chat_id=chat_id, text="Iltimos, talab yoki taklifingizni yozing:")
-
-    elif text == "📊 So‘rovnomada qatnashish":
-        send_poll_menu(chat_id, context)
-
-    else:
-        context.bot.send_message(chat_id=ADMIN_ID, text=f"Yangi talab/taklif:\n\n{text}")
-        context.bot.send_message(chat_id=chat_id, text="Xabaringiz uchun rahmat!")
-
-# Inline so‘rovnoma yuborish
-def send_poll_menu(chat_id, context):
-    keyboard = [[InlineKeyboardButton(opt, callback_data=f"vote_{opt}")] for opt in OPTIONS]
-    keyboard.append([InlineKeyboardButton("✅ Yuborish", callback_data="submit_votes")])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    context.bot.send_message(
-        chat_id=chat_id,
-        text="Bot sizga yoqmoqdami? Bir nechta variantni tanlang:",
-        reply_markup=reply_markup
+# --- Poll yaratish ---
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    question = "Sizga qaysi texnologiyalar yoqadi?"
+    options = ["Python", "JavaScript", "C++", "Java", "Rust", "Go"]
+    await context.bot.send_poll(
+        chat_id=update.effective_chat.id,
+        question=question,
+        options=options,
+        is_anonymous=False,
+        allows_multiple_answers=True
     )
 
-# Tugmalarni qayta ishlash
-def button_click(update, context: CallbackContext):
-    query = update.callback_query
-    user_id = query.from_user.id
-    data = query.data
 
-    if data.startswith("vote_"):
-        option = data.replace("vote_", "")
-        if user_id not in user_votes:
-            user_votes[user_id] = set()
+# --- Poll javoblarini saqlash ---
+async def poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    answer = update.poll_answer
+    user_id = answer.user.id
+    username = answer.user.username or answer.user.full_name
+    selected_options = answer.option_ids
 
-        # Tanlash/tanlamaslikni almashtiramiz
-        if option in user_votes[user_id]:
-            user_votes[user_id].remove(option)
-        else:
-            user_votes[user_id].add(option)
-
-        # Klaviaturani yangilaymiz
-        keyboard = []
-        for opt in OPTIONS:
-            text = f"✅ {opt}" if opt in user_votes[user_id] else opt
-            keyboard.append([InlineKeyboardButton(text, callback_data=f"vote_{opt}")])
-        keyboard.append([InlineKeyboardButton("✅ Yuborish", callback_data="submit_votes")])
-
-        query.edit_message_reply_markup(InlineKeyboardMarkup(keyboard))
-
-    elif data == "submit_votes":
-        votes = user_votes.get(user_id, set())
-        if not votes:
-            query.answer("Hech narsa tanlanmadi 😅", show_alert=True)
-            return
-
-        query.answer("Javoblaringiz qabul qilindi! 😊", show_alert=True)
-
-        # Adminga yuborish
-        context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"🧑‍💻 Foydalanuvchi {query.from_user.first_name} ({user_id}) tanlagan variantlar:\n{', '.join(votes)}"
-        )
-
-        # Natijalarni ko‘rsatish
-        show_results(context, query)
-
-# /natijalar komandasi (faqat admin uchun)
-def show_results_command(update, context):
-    if update.effective_user.id != ADMIN_ID:
-        update.message.reply_text("Bu buyruq faqat admin uchun!")
+    # poll natijalarini olish
+    poll_message = context.bot_data.get(answer.poll_id)
+    if not poll_message:
         return
 
-    result_text = get_results_text()
-    update.message.reply_text(result_text, parse_mode="HTML")
+    question = poll_message["question"]
+    options = poll_message["options"]
 
-# Natijalarni hisoblash
-def get_results_text():
-    stats = {opt: 0 for opt in OPTIONS}
-    for votes in user_votes.values():
-        for v in votes:
-            if v in stats:
-                stats[v] += 1
+    # foydalanuvchi tanlagan variantlar
+    selected_texts = [options[i] for i in selected_options]
 
-    total = sum(stats.values()) or 1
+    # mavjud faylni o'qish
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+    else:
+        data = {}
 
-    result_text = "📊 <b>Umumiy natijalar:</b>\n\n"
-    for opt, count in stats.items():
-        percent = (count / total) * 100
-        bars = "▮" * int(percent // 10) + "▯" * (10 - int(percent // 10))
-        result_text += f"{opt}: {count} ta ({percent:.1f}%)\n{bars}\n\n"
-    return result_text
+    data[str(user_id)] = {
+        "username": username,
+        "answers": selected_texts
+    }
 
-# Foydalanuvchiga natijani ko‘rsatish
-def show_results(context, query):
-    result_text = get_results_text()
-    context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text=result_text,
-        parse_mode="HTML"
-    )
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-# Main
+
+# --- Poll yuborilganini saqlash ---
+async def poll_created(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    poll = update.poll
+    context.bot_data[poll.id] = {"question": poll.question, "options": poll.options}
+
+
+# --- Admin uchun barcha natijalarni chiqarish ---
+async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("🚫 Siz admin emassiz.")
+        return
+
+    if not os.path.exists(DATA_FILE):
+        await update.message.reply_text("Hali hech kim javob bermagan.")
+        return
+
+    with open(DATA_FILE, "r") as f:
+        data = json.load(f)
+
+    if not data:
+        await update.message.reply_text("Hali javob yo‘q.")
+        return
+
+    text = "📊 *Poll natijalari:*\n\n"
+    for user, info in data.items():
+        text += f"👤 @{info['username'] if info['username'] else user}:\n"
+        for ans in info["answers"]:
+            text += f"   • {ans}\n"
+        text += "\n"
+
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
+# --- Main ---
 def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    if not TOKEN:
+        raise ValueError("TOKEN yo‘q! Heroku config vars’da TOKEN o‘rnatilganini tekshiring.")
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("natijalar", show_results_command))
-    dp.add_handler(MessageHandler(Filters.text, handle_message))
-    dp.add_handler(CallbackQueryHandler(button_click))
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    updater.start_polling()
-    print("✅ Bot ishlayapti...")
-    updater.idle()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(PollHandler(poll_created))
+    app.add_handler(CommandHandler("results", results))
+    app.add_handler(PollHandler(poll_answer))
 
-if __name__ == '__main__':
+    print("✅ Bot ishga tushdi...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
     main()
