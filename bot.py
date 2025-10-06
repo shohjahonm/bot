@@ -1,11 +1,11 @@
 # 1139713731  
-# 8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU
+# 8328899370:AAFatemiB1503HFYFzauBWLsgtQCu2X1MB4
 import os
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters, CallbackContext
 
 # TOKENni Heroku Config Vars dan olish
-TOKEN = os.getenv("8328899370:AAH8ZYttJKUzhEL6IFl9ipZBAqKiSx4JaRU")
+TOKEN = os.getenv("8328899370:AAFatemiB1503HFYFzauBWLsgtQCu2X1MB4")
 
 ADMIN_ID = 1139713731  # o'zingizni ID
 user_votes = {}  # foydalanuvchi tanlovlari
