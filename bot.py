@@ -1,12 +1,12 @@
 # 1139713731   969555465
-# 8328899370:AAELKLQc5WK57eyS7TizmEP8HqX1SFofq9Q
+# 8328899370:AAG99a7wOhWT9noWihwuSEb2ccIhP825Fyo
 import os
 import csv
 from telegram import ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollAnswerHandler, CallbackContext
 
 # TOKEN va ADMIN_ID ni bu yerga yoz
-TOKEN = "8328899370:AAELKLQc5WK57eyS7TizmEP8HqX1SFofq9Q"
+TOKEN = "8328899370:AAG99a7wOhWT9noWihwuSEb2ccIhP825Fyo"
 ADMIN_ID = 1139713731
 
 # So‘rovnomalarni kuzatish uchun
