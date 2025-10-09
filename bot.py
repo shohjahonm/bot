@@ -7,7 +7,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PollA
 
 # Environment variables
 TOKEN = os.getenv("TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "1139713731"))
+ADMIN_ID = int(os.getenv("ADMIN_ID", "969555465"))
 
 # Poll tracking
 active_polls = {}  # chat_id: list of poll_ids
