@@ -5,7 +5,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Callback
 
 # 🔐 Bot token va admin ID lar
 TOKEN = "8328899370:AAG99a7wOhWT9noWihwuSEb2ccIhP825Fyo"
-ADMIN_IDS = [1139713731, 6076040344]  # bu yerga 2ta admin ID yoz
+ADMIN_IDS = [969555465, 1139713731]  # bu yerga 2ta admin ID yoz
 
 # 🔢 So‘rovnoma savollari
 polls = [
